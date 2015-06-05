@@ -1,0 +1,7 @@
+push optdepends perl-net-ssleay: TLS/SSL connections with AnyEvent::Handle
+push optdepends perl-json-xs: send or receive JSON with AnyEvent::Handle
+push depends perl-ev>=4.00 perl-guard>=1.02 perl-async-interrupt>=1.0
+split depends
+set epoch 4
+fmt pkgver %.02f
+slip check export PERL_ANYEVENT_LOOP_TESTS=1 PERL_ANYEVENT_NEW_TESTS=1

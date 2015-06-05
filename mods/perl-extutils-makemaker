@@ -1,0 +1,5 @@
+push depends perl-cpan-meta>=2.112150 perl-extutils-install>=1.52
+push depends perl-extutils-command>=1.16 perl-extutils-manifest>=1.58
+split depends
+slip build mv Makefile.PL.new Makefile.PL
+slip build sed -e '/my::bundles/d' Makefile.PL >Makefile.PL.new

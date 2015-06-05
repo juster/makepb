@@ -1,0 +1,5 @@
+set provides perl-app-perlbrew=$pkgver
+move perl-io-all perl-path-class from makedepends to checkdepends
+set license custom:MIT
+push package install -d -m 755 "$pkgdir"/usr/share/licenses/perlbrew
+push package install -m 644 LICENSE "$pkgdir"/usr/share/licenses/perlbrew/LICENSE
