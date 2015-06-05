@@ -2,7 +2,8 @@
 
 modpkg(){
     case $# in
-    0) echo "usage: modpkg [mod script path] <PKGINFO >PKGBUILD" 1>&2; return 2 ;;
+    0)  echo "usage: modpkg [mod script path] <PKGINFO.in >PKGINFO.out" 1>&2
+        return 2 ;;
     esac
     if ! [ -f "$1" -a -r "$1" ]; then
         echo "modpkg: error: bad mod script path: $1" 1>&2
