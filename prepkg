@@ -1,0 +1,128 @@
+#!/bin/sh
+##
+#
+
+set -e
+
+slipdig() {
+    cat "$1" | awk '
+BEGIN { FS=OFS="\n"; RS=ORS="\n\n" }
+{ print }
+function dig(d, n) {
+    cmd = d "sum"
+    for(i=1; i<=n; i++){
+        cmd = cmd " " files[i]
+    }
+    FS=" "; RS="\n"; n=1
+    while(cmd|getline > 0){
+        digs[d,n++] = $1
+    }
+    close(cmd)
+    digs[d,"n"] = n
+    FS="\n"; RS="\n\n"
+}
+$1 == "source" {
+    for(i=2; i<=NF; i++){
+        files[i-1] = $i
+    }
+    dig("md5", NF-1)
+    dig("sha", NF-1)
+}
+function putdigs(d){
+    for(i=1; i<=digs[d,"n"]; i++){
+        print digs[d,i]
+    }
+}
+END {
+    ORS="\n"
+    print "md5sums"
+    putdigs("md5")
+    print ""
+    print "sha1sums"
+    putdigs("sha")
+    print ""
+}
+' > "$1.new"
+    mv "$1.new" "$1"
+}
+
+writepb() {
+    cat "$1" | awk '
+BEGIN { FS="\n"; RS="\n\n" }
+{
+    for(i=2; i<=NF; i++) pb[$1,i] = $i
+    pb[$1,"n"] = NF-1
+}
+function s(f) {
+    return pb[f,1]
+}
+function q(f) {
+    return "'" pb[f,1] "'"
+}
+function qq(f) {
+    x = pb[f,1]
+    gsub(/\\/, "\\\\", x)
+    gsub(/"/, "\\\"", x)
+    return "\"" x "\""
+}
+function a(f) {
+    p = "\n" sprintf("%" length(f) "s", " ")
+    x = "(" q(pb[f,1])
+    for(i = 2; i < count[f]; i++){
+        x = x p q(pb[f,i])
+    }
+    return x ")"
+}
+function f(f) {
+    s = f "() {\n"
+    for(i = 1; i < pb[f,"n"]; i++){
+        if(pb[f,i] == "#"){
+            s = s "\n"
+        }else{
+            s = s pb[f,i] "\n"
+        }
+    }
+    return s "}\n"
+}
+END {
+    print "# Maintainer: " s("maintainer")
+    print "pkgname=" s("name")
+    print "pkgver=" s("version")
+    print "pkgrel=" s("release")
+    print "epoch=" s("epoch")
+    print "pkgdesc=" qq("pkgdesc")
+    print "url=" q("url")
+    print "arch=" a("arch")
+    print "license=" a("license")
+    print "install=" s("install")
+    print "changelog=" s("changelog")
+    print "source=" a("source")
+    print "validpgpkeys=" a("validpgpkeys")
+    print "noextract=" a("noextract")
+    print "backup=" a("backup")
+    print "depends=" a("depends")
+    print "makedepends=" a("makedepends")
+    print "checkdepends=" a("checkdepends")
+    print "optdepends=" a("optdepends")
+    print "conflicts=" a("conflicts")
+    print "provides=" a("provides")
+    print "replaces=" a("replaces")
+    print "options=" a("options")
+    print ""
+    print f("build")
+    print ""
+    print f("check")
+    print ""
+    print f("install")
+}
+' | egrep -v '^[^ ]*=\(()\)?$' > PKGBUILD.new
+    mv PKGBUILD.new PKGBUILD
+}
+
+case $1 of
+"") echo "usage: prepkg [PKGINFO path]" 1>&2
+    exit 2
+*)  grep -q '^md5sums$' "$1" || slipdig "$1"
+    writepb "$1"
+    exit 0
+esac

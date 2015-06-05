@@ -1,0 +1,154 @@
+#!/bin/sh
+
+# slip-stream digest field entries, one for each source entry
+slipd() {
+    awk -v "field=$1" -v "cmd=$2" '
+BEGIN { FS=OFS="\n"; RS=ORS="\n\n" }
+1
+$1 == "source" {
+    if(NF == 1){
+        print "error: source field has empty value" | "cat 1>&2"
+        exit(1)
+    }
+    for(i=2; i <= NF; i++){
+        sub(/.*\//, "", $i)
+        if(system("test -f " $i)){
+            print "error: source file missing: " $i |"cat 1>&2"
+            exit(1)
+        }
+        cmd = cmd " " $i
+    }
+    FS=" "; RS=ORS="\n"
+    print field
+    while(cmd|getline >0) print $1
+    print ""
+    FS="\n"; RS=ORS="\n\n"
+}
+' ; } #slipd
+
+slipdigs() {
+    slipd md5sums md5sum |slipd sha512sums 'shasum -a 512'
+}
+
+pushdigs() {
+    if cat "$1" |slipdigs >"$1.$$" ; then
+        mv "$1.$$" "$1"
+    else
+        rm "$1.$$"
+        return 1
+    fi
+}
+
+printpb() {
+    awk '
+BEGIN { FS="\n"; RS="" }
+
+{
+    pb[$1,"n"] = NF-1
+    for(i=2; i<=NF; i++) pb[$1,i-1] = $i
+}
+
+/^_/ { cvars = cvars $1 " " }
+
+function q(f) {
+    for(i=1; i<=pb[f,"n"]; i++)
+        pb[f,i] = "\047" pb[f,i] "\047"
+}
+function qq(f) {
+    for(i=1; i<=pb[f,"n"]; i++){
+        gsub(/\\/, "\\\\", pb[f,i])
+        gsub(/"/, "\\\"", pb[f,i])
+        pb[f,i] = "\"" pb[f,i] "\""
+    }
+}
+function empty(f) {
+    return !((f SUBSEP 1) in pb)
+}
+function s(f) {
+    if(empty(f)) return
+    print f, pb[f,1]
+}
+function a(f) {
+    if(empty(f)) return
+    p = "\n" sprintf("%" (length(f)+2) "s", " ")
+    x = "(" pb[f,1]
+    for(i=2; i <= pb[f,"n"]; i++){
+        x = x p pb[f,i]
+    }
+    print f, x ")"
+}
+function f(fld) {
+    x = "    cd \"$_dir\"\n"
+    for(i=1; i <= pb[fld,"n"]; i++){
+        if(pb[fld,i] == "#"){
+            x = x "\n"
+        }else{
+            x = x "    " pb[fld,i] "\n"
+        }
+    }
+    print fld "() {", x "}"
+}
+END {
+    ORS="\n"
+    "date"|getline; print "# Created with makepb on " $1
+    if(("maintainer" SUBSEP 1) in pb)
+        print "# Maintainer: " s("maintainer")
+    OFS="="
+    s("pkgname")
+    s("pkgver")
+    s("pkgrel")
+    s("epoch")
+    qq("pkgdesc"); s("pkgdesc")
+    s("url")
+    a("arch")
+    a("license")
+    s("install")
+    s("changelog")
+    a("source")
+    a("validpgpkeys")
+    a("noextract")
+    a("backup")
+    q("depends"); a("depends")
+    q("makedepends"); a("makedepends")
+    q("checkdepends"); a("checkdepends")
+    q("optdepends"); a("optdepends")
+    q("conflicts"); a("conflicts")
+    q("provides"); a("provides")
+    q("replaces"); a("replaces")
+    q("options"); a("options")
+    a("md5sums")
+    a("sha512sums")
+
+    # print custom variables (bash parameters)
+    c = split(cvars, cv, / /)
+    for(i=1; i<c; i++) a(cv[i])
+
+    OFS="\n"
+    print ""; f("build")
+    print ""; f("check")
+    print ""; f("package")
+}
+' ; } #printpb
+
+makepb(){
+    [ "x$1" = x ] && set PKGINFO
+    if [ ! -f "$1" ]; then
+        echo "makepb error: $1 is missing" 1>&2
+        return 1
+    fi
+    [ "x$2" = x ] && set "$1" PKGBUILD
+
+    pkg=`awk 'BEGIN { FS="\n"; RS="" } $1 == "pkgname" { print $2 }' "$1"`
+    if [ "x$pkg" = x ]; then
+        echo "makepb error: $1 is missing pkgname" 1>&2
+        return 1
+    fi
+    if ! grep -q '^md5sums$' "$1" ; then
+        pushdigs "$1" || return $?
+    fi
+    printpb <"$1" >"$2.$$"
+    mv "$2.$$" "$2"
+}
+
+makepb "$@"
+exit $?

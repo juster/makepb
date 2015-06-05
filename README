@@ -1,0 +1,100 @@
+makepb = PKGBUILD generator
+---------------------------
+
+This collection of old fashioned shell/awk scripts can be used to generate
+PKGBUILDs auto-magically. The target audiences are both users looking for
+means of generating packages for requisites (like Perl packages) as well as
+package maintainers who want a semi-automated solution that can be customized.
+
+I. PKGINFO
+
+PKGINFO files are simple text files that contain the data that will be
+converted into a PKGBUILD script. Using a simple key/value line-based
+format, we can shuttle values around and translate them through shell
+pipelines. The format of each key/value pair is simple and familiar:
+
+key
+value1
+...
+valueN
+empty line
+
+This is how we store PKGBUILD fields, conventionally represented as Bash
+assignments in the PKGBUILD script. Fields such as pkgname, pkgvar, pkgdesc,
+etc are stored in the PKGINFO in this manner. Less predictibly, the PKGBUILD
+functions ("build", "check", "package") are also stored in the PKGINFO. Custom
+variables are stored as well, and can be identified as having key names
+which begin with underscores.
+
+II. makepb
+
+The makepb script reads a PKGINFO file from standard input and writes a
+PKGBUILD script to standard output. This is rather straight-forward. PKGBUILD
+fields are generally conceived as having distinctive types and these are
+respected (i.e. pkgname is a string and source is an array). Quoting is less
+strict than would be the ardent adherents of single quotes, double quotes, and
+${parameter} expansions. Obsession with shell style and so-called types seems
+like a waste of time to me. I prefer no quotes at all if I can get away with
+it.
+
+III. modpkg
+
+The modpkg script reads a PKGINFO from standard input and writes a modified
+PKGINFO to standard output. As a parameter, modpkg takes the path of a modpkg
+script, from which it interprets actions to be performed on the PKGINFO data.
+These scripts are written in a very simple, wholly line-based language. Both
+the commands and the data are read as a line, with no line-extending special
+characters.
+
+Commands:
+  set   - Set a key to a single value: the rest of the line.
+  push  - Adds a value to the end of a key's value list.
+  slip  - Preprends a value to the beginning of a key's value list.
+  move  - Move a list of matching values from one key to another.
+  split - Split every value of a key, based around their whitespace.
+  fmt   - Format a key's first value, sprintf style. (Discards other values)
+
+The default location to find modpkg scripts is in ~/pkg/mods/. This is where
+the package generating scripts, below, will search but you can override this
+by setting the MODSDIR environment variable (or editing them). I found the need
+to automate slight modifications to packages while performing duties as a
+package maintainer. The advantage of modpkg scripts is that your customizations
+are recorded in a simple form. These mods are usually needed for later releases
+and can then easily be applied. Changes, which are usually slight, can also be
+made to modpkg scripts as necessary.
+
+IV. perlpkg
+
+The perlpkg script generates PKGBUILD files for perl distributions it finds
+on CPAN. This script keeps an index of CPAN distributions and modules under
+the ~/.perlpkg directory. The curl program is required to download the CPAN
+index as well as fetch the META information for the requisite CPAN distrib-
+ution.
+
+Distributions are like packages, in that they contain perl module (.pm) files
+as well as information regarding what other modules are required to execute
+these contents. The distribution names use hyphens and are usually named after
+the main-module contained inside. Pass the distribution name as argument to
+download the distributable tarball and generate a PKGINFO in the current dir-
+ectory. After the PKGINFO is generated it is run through modpkg. Finally a
+PKGBUILD is generated from the result.
+
+V. cpanpkg
+
+This handy script uses perlpkg to fetch the distribution named as a command-
+line argument. After creating the package, and before it builds and installs
+it, cpanpkg will perform the same operation to every module depended on by
+the package which cannot be loaded by perl. This is a handy replacement
+for the much more complicated CPANPLUS, for which I have written a plugin to
+accomplish the same thing.
+
+Because many packages may be generated they cannot all be downloaded and gen-
+erated in the current directory. cpanpkg stores these packages by default un-
+der the ~/pkg/src/ directory. You can override this by setting the PKGDIR env-
+ironment variable.
+
+VI. Contact
+
+I release this small project into the Public Domain.
+Justin Davis <jrcd83@gmail.com>
+June 5, 2015

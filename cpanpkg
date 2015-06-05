@@ -1,0 +1,64 @@
+#!/bin/sh
+
+[ "x$PKGDIR" = x ] && PKGDIR="$HOME/pkg/src"
+DLIST="$HOME/.cpanpkg.$$"
+
+needed(){
+    awk -v "mlist=$HOME/.perlpkg/mods" '
+BEGIN { FS="\n"; RS=""; ORS="\n" }
+$1 ~ /^cpan[bct]?req$/ {
+    for(i=2; i<=NF; i++){
+        c = split($i, mv, />=/)
+        if(c == 2 && system("perl -M" mv[1] " -e1 2>/dev/null")){
+            need[mv[1]]=""
+            needs=1
+        }
+    }
+}
+END {
+    if(!needs) exit(0)
+    while(getline <mlist){
+        for(i=2; i<=NF; i++) if($i in need) dist[$1]=""
+    }
+    for(d in dist) print d
+}
+' ; }
+
+sync()(
+    if fgrep -qx "$1" "$DLIST"; then
+        return 0
+    else
+        echo "$1" >>"$DLIST"
+    fi
+    
+    cd "$PKGDIR/cpanpkg.$$"
+    perlpkg "$1" || return $?
+    pkg=`awk 'BEGIN { FS="\n"; RS=""; ORS="\n" }
+        $1 == "pkgname" { print $2 }' PKGINFO`
+    if [ x"$pkg" = x ]; then
+        echo "cpanpkg: error: `pwd`/PKGINFO is missing pkgname" 1>&2
+        return 1
+    fi
+    
+    mkdir "../$pkg"
+    mv * "../$pkg"
+    cd "../$pkg"
+    needed <PKGINFO |while read dep; do
+        sync "$dep" || return $?
+    done
+    makepkg -i
+)
+
+cpanpkg(){
+    touch "$DLIST"
+    mkdir -p "$PKGDIR/cpanpkg.$$" || return $?
+    trap 'rm -r "$DLIST" "$PKGDIR/cpanpkg.$$"' 1 2 15
+    sync "$1"
+    e=$?
+    rm -r "$DLIST" "$PKGDIR/cpanpkg.$$"
+    trap '' 1 2 15
+    return $e
+}
+
+cpanpkg "$@"
+exit $?
