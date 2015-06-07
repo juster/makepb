@@ -95,8 +95,8 @@ BEGIN { OFS="\n"; ORS="\n\n" }
     print "pkgver", $2
 }
 /^abstract:/ {
-    for(i=2; i<=NF; i++) desc = desc $i " "
-    sub(/ $/, "", desc)
+    desc = $2
+    for(i=3; i<=NF; i++) desc = desc " " $i
     gsub(/"/, "", desc)
     print "pkgdesc", desc
 }
