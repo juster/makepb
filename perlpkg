@@ -84,6 +84,8 @@ BEGIN {
 pkginfo(){
     printf "source\nhttp://cpan.metacpan.org/authors/id/$SRC\n\n"
     printf "url\nhttps://metacpan.org/release/$DIST\n\n"
+    printf "pkgrel\n1\n\n"
+    printf "arch\nany\n\n"
     printf "cpandist\n$DIST\n\n"
     awk '
 BEGIN { OFS="\n"; ORS="\n\n" }
@@ -91,6 +93,12 @@ BEGIN { OFS="\n"; ORS="\n\n" }
 /^version:/ {
     gsub(/\047/, "", $2)
     print "pkgver", $2
+}
+/^abstract:/ {
+    for(i=2; i<=NF; i++) desc = desc $i " "
+    sub(/ $/, "", desc)
+    gsub(/"/, "", desc)
+    print "pkgdesc", desc
 }
 
 dt && !/^  +/ { dt=0 }
