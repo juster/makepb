@@ -18,9 +18,8 @@ $1 ~ /^cpan[bct]?req$/ {
 END {
     if(!needs) exit(0)
     while(getline <mlist){
-        for(i=2; i<=NF; i++) if($i in need) dist[$1]=""
+        for(i=2; i<=NF; i++) if($i in need && !seen[$1]++) print $1
     }
-    for(d in dist) print d
 }
 ' ; }
 
