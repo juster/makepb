@@ -203,6 +203,19 @@ $1 in depfld {
 }
 ' ; } #pkgconv
 
+xsarch(){
+    tball=`echo $SRC | sed 's/.*\///'`
+    if ! tar tf "$tball" | grep -q '\.xs$' ; then
+        cat
+    else
+        awk '
+BEGIN { FS=OFS="\n"; RS=""; ORS="\n\n" }
+$1 == "arch" { print "arch", "i686 x86_64"; next }
+1
+'
+    fi
+}
+
 slipbash(){
 awk '
 BEGIN { OFS=FS="\n"; RS=""; ORS="\n\n" }
@@ -264,7 +277,7 @@ perlpkg(){
     0)  echo "usage: perlpkg [exact CPAN distribution name]" 1>&2; return 2 ;;
     esac
     if sync && fetch "$1"; then
-        meta |pkginfo |slipbash |pkgconv |mod `pkgname` >PKGINFO
+        meta |pkginfo |xsarch |slipbash |pkgconv |mod `pkgname` >PKGINFO
         makepb
     else
         return 1
