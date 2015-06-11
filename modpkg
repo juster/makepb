@@ -49,9 +49,9 @@ function move2(r, from, to){
 function move(){
     for(i=3; i<=NF; i++) if($i == "from") break
     if(i>NF)
-        err("move command is missing the word 'from'")
+        err("move command is missing the word \"from\"")
     if($(i+2) != "to" || i+3 > NF)
-        err("move command is missing the 'to' parameter")
+        err("move command is missing the \"to\" parameter")
     for(j=2; j<i; j++) move2($j, $(i+1), $(i+3))
     outfld($(i+3)) # make sure the "to" field is printed
 }
