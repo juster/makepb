@@ -97,7 +97,8 @@ BEGIN { OFS="\n"; ORS="\n\n" }
 /^abstract:/ {
     desc = $2
     for(i=3; i<=NF; i++) desc = desc " " $i
-    gsub(/"/, "", desc)
+    sub(/^["\047]/, "", desc)
+    sub(/["\047]$/, "", desc)
     print "pkgdesc", desc
 }
 
