@@ -41,15 +41,13 @@ END {
 }
 ' ; } #latest
 
-stale(){
-    echo `stat --format %W $1` `date +%s` | \
-        awk '$2 - $1 > 60*60*24 { exit(0) } END { exit(1) }'
-    return $?
+fresh(){
+    echo `stat --format %W $1` `date +%s` |awk '$2 - $1 > 60*60*24 { exit(1) }'
 }
 
 sync()(
     [ -d "$HOME/.perlpkg" ] || mkdir "$HOME/.perlpkg"
-    if [ ! -f "$HOME/.perlpkg/dists" ] || stale "$HOME/.perlpkg/dists"
+    if [ ! -f "$HOME/.perlpkg/dists" ] || ! fresh "$HOME/.perlpkg/dists"
     then
         cd "$HOME/.perlpkg"
         URL=$CPAN/modules/02packages.details.txt.gz
@@ -59,7 +57,7 @@ sync()(
 
 fetch(){
     DIST=$1
-    SRC=`awk -v "d=$1" '$1 == d { print $2 }' "$HOME/.perlpkg/dists"`
+    SRC=`awk -v "d=$1" '$1 == d { print $2; exit(0) }' "$HOME/.perlpkg/dists"`
     case "$SRC" in
     '') echo "perlpkg: error: failed to find dist: $1" 1>&2; return 1
     esac
